@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vantic</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bg" aria-hidden></div>
+
+    <div class="splash" id="splash">
+      <div class="splash-inner">
+        <img src="../../assets/vanticnobg.png" alt="" />
+        <div class="splash-word">Van<b>tic</b></div>
+        <div class="splash-bar"><div class="splash-fill"></div></div>
+      </div>
+    </div>
+
+    <header class="titlebar" id="titlebar">
+      <div class="tb-left drag">
+        <img class="tb-logo" src="../../assets/vanticnobg.png" alt="" />
+        <span class="tb-brand">Van<b>tic</b></span>
+      </div>
+      <div class="tb-mid drag"></div>
+      <div class="tb-right">
+        <div class="acct" id="acct"></div>
+        <div class="win-controls">
+          <button class="wc" id="wc_min" title="Minimize"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+          <button class="wc" id="wc_max" title="Maximize"><svg width="10" height="10" viewBox="0 0 10 10" id="wc_max_ico"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+          <button class="wc wc-close" id="wc_close" title="Close"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1"/></svg></button>
+        </div>
+      </div>
+    </header>
+
+    <div class="update_banner" id="update_banner"></div>
+
+    <div class="shell" id="shell">
+      <nav class="sidebar" id="sidebar"></nav>
+      <main id="app"></main>
+    </div>
+
+    <footer class="foot">
+      <span class="left"><span class="status_dot"></span><span>Vantic v2.2.0 · free forever</span></span>
+      <a href="#" data-ext="https://discord.gg/vantic">Discord</a>
+    </footer>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "name": "vantic-launcher",
+  "version": "2.2.0",
+  "description": "Vantic Minecraft launcher",
+  "private": true,
+  "main": "dist/main/index.js",
+  "author": "Vantic",
+  "license": "UNLICENSED",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build:main": "esbuild src/main/index.ts --bundle --platform=node --target=node20 --external:electron --external:electron-updater --external:msmc --external:minecraft-launcher-core --external:discord-rpc --outfile=dist/main/index.js",
+    "build:preload": "esbuild src/preload/index.ts --bundle --platform=node --target=node20 --external:electron --outfile=dist/preload/index.js",
+    "build:renderer": "esbuild src/renderer/renderer.ts --bundle --target=es2020 --outfile=dist/renderer/renderer.js && node scripts/copy-static.js",
+    "build": "npm run clean && npm run build:main && npm run build:preload && npm run build:renderer",
+    "dev": "npm run build && electron .",
+    "start": "electron .",
+    "pack": "npm run build && electron-builder --win --x64",
+    "dist": "npm run build && electron-builder --win --x64 --publish never"
+  },
+  "dependencies": {
+    "discord-rpc": "^4.0.1",
+    "electron-updater": "^6.3.9",
+    "minecraft-launcher-core": "^3.18.2",
+    "msmc": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
+    "esbuild": "^0.20.2",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.5"
+  },
+  "build": {
+    "appId": "lol.vantic.launcher",
+    "productName": "Vantic",
+    "directories": { "output": "release", "buildResources": "build" },
+    "publish": [
+      { "provider": "github", "owner": "oneflicked-lang", "repo": "vantic-launcher", "releaseType": "release" }
+    ],
+    "files": [
+      "dist/**/*",
+      "assets/vanticnobg.png",
+      "assets/vantic.png",
+      "assets/vanticbanner.png",
+      "package.json",
+      "node_modules/msmc/**/*",
+      "node_modules/minecraft-launcher-core/**/*",
+      "node_modules/discord-rpc/**/*",
+      "node_modules/electron-updater/**/*",
+      "node_modules/builder-util-runtime/**/*",
+      "node_modules/register-scheme/**/*"
+    ],
+    "win": { "target": [ { "target": "nsis", "arch": ["x64"] } ], "icon": "build/icon.ico" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "shortcutName": "Vantic" }
+  },
+  "allowScripts": { "electron@30.5.1": true, "esbuild@0.20.2": true }
+}
