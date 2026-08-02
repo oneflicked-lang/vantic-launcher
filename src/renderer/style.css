@@ -334,6 +334,25 @@ body.locked main { display: grid; place-items: center; padding: 0; }
 .lb_name .you { font-size: 10px; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.12em; margin-left: 6px; }
 .lb_time { font-family: var(--font_mono); font-size: 14px; font-weight: 700; color: var(--text); }
 
+/* Custom background */
+#custom_bg { position: fixed; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: 0.5; pointer-events: none; }
+#custom_bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,11,0.55), rgba(10,10,11,0.8)); }
+
+/* Confetti */
+.confetti_layer { position: fixed; inset: 0; z-index: 300; pointer-events: none; }
+
+/* Online pill */
+.online_pill { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; background: rgba(70,221,139,0.08); border: 1px solid rgba(70,221,139,0.4); color: var(--good); font-size: 12.5px; font-weight: 600; margin-top: 8px; }
+.live_dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(70,221,139,0.18); animation: pulse 1.6s var(--ease) infinite; }
+
+/* Theme rainbow dot + bg row */
+.theme_swatch .dot.rainbow { background: conic-gradient(from 0deg, #ff5c5c, #ffd24a, #46dd8b, #4bd6e6, #5b8cff, #a06bff, #ff6bd6, #ff5c5c); }
+.bg_row { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+
+/* Wrapped */
+.wrapped_body { display: flex; flex-direction: column; align-items: center; gap: 14px; overflow: auto; padding: 10px; }
+.wrapped_img { max-width: min(78vh, 92vw); max-height: calc(100vh - 130px); border-radius: 16px; box-shadow: 0 20px 60px -20px rgba(0,0,0,0.9); }
+
 /* Profile */
 .profile_top { display: grid; grid-template-columns: 160px 1fr; gap: 20px; align-items: stretch; margin-bottom: 14px; }
 .profile_skin { display: grid; place-items: center; border-radius: var(--r_lg); background: var(--surface); border: 1px solid var(--line); padding: 12px; min-height: 200px; }

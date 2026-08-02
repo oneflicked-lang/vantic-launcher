@@ -21,8 +21,9 @@ import { cleanupLegacy } from "./resourcePack";
 import { scanHardware, AIKAR_FLAGS, Recommendation } from "./hardware";
 import { checkAccess } from "./access";
 import { recordSession, summary as playtimeSummary } from "./playtime";
-import { fetchNews, fetchLeaderboard, uploadPlaytime } from "./community";
+import { fetchNews, fetchLeaderboard, uploadPlaytime, postHeartbeat, fetchOnline, imageDataUrl } from "./community";
 import { applyFastOptions } from "./gameOptions";
+import { dialog } from "electron";
 import { loadServers, saveServers, parseAddress, Server } from "./servers";
 import { pingServer } from "./serverPing";
 import crypto from "crypto";
@@ -165,6 +166,42 @@ ipcMain.handle("stats:get", async () => loadStats());
 ipcMain.handle("playtime:get", async () => playtimeSummary());
 ipcMain.handle("news:list", async () => fetchNews());
 ipcMain.handle("leaderboard:list", async () => fetchLeaderboard());
+ipcMain.handle("online:count", async () => fetchOnline());
+ipcMain.handle("image:dataurl", async (_e, url: string) => imageDataUrl(url));
+
+// Pick a custom launcher background, copy it into appdata so it persists, and
+// return a file URL the renderer can use.
+ipcMain.handle("bg:pick", async () => {
+  const res = await dialog.showOpenDialog(win!, {
+    title: "Choose a launcher background",
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+  });
+  if (res.canceled || !res.filePaths[0]) return null;
+  const src = res.filePaths[0];
+  const dest = path.join(mcDir(), "..", `background${path.extname(src)}`);
+  try {
+    fs.copyFileSync(src, dest);
+    return pathToFileURL(dest).href;
+  } catch {
+    return pathToFileURL(src).href;
+  }
+});
+
+// Save a Vantic Wrapped card (data URL from a canvas) to disk and reveal it.
+ipcMain.handle("wrapped:save", async (_e, dataUrl: string) => {
+  try {
+    const b64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+    const dir = path.join(mcDir(), "screenshots");
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `vantic-wrapped-${Date.now()}.png`);
+    fs.writeFileSync(file, Buffer.from(b64, "base64"));
+    shell.showItemInFolder(file);
+    return file;
+  } catch {
+    return null;
+  }
+});
 
 // servers
 ipcMain.handle("servers:list", async () => loadServers());
@@ -262,6 +299,8 @@ ipcMain.handle("launch:play", async (evt) => {
   evt.sender.send("stats:update", stats);
 
   const sessionStart = Date.now();
+  postHeartbeat(auth.uuid);
+  const heartbeat = setInterval(() => postHeartbeat(auth.uuid), 60_000);
 
   launch(
     {
@@ -277,6 +316,7 @@ ipcMain.handle("launch:play", async (evt) => {
       exit: async (code) => {
         running = false;
         setIdle();
+        clearInterval(heartbeat);
         pushLog(`> Minecraft exited with code ${code}`);
         await recordSession((Date.now() - sessionStart) / 1000);
         if (settings.leaderboard) {

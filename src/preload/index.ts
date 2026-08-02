@@ -74,6 +74,10 @@ const api = {
     list: (): Promise<Array<{ minecraft_uuid: string; minecraft_name: string; total_seconds: number }>> =>
       ipcRenderer.invoke("leaderboard:list"),
   },
+  online: { count: (): Promise<number> => ipcRenderer.invoke("online:count") },
+  imageDataUrl: (url: string): Promise<string | null> => ipcRenderer.invoke("image:dataurl", url),
+  pickBackground: (): Promise<string | null> => ipcRenderer.invoke("bg:pick"),
+  saveWrapped: (dataUrl: string): Promise<string | null> => ipcRenderer.invoke("wrapped:save", dataUrl),
   gallery: {
     list: (): Promise<Array<{ name: string; path: string; size: number; mtime: number; url: string }>> =>
       ipcRenderer.invoke("gallery:list"),

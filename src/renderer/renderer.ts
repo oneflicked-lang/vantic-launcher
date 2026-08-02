@@ -90,6 +90,7 @@ async function boot() {
   stats = s;
   const settings0 = await window.vantic.settings.get();
   applyTheme(settings0.accent, settings0.accentInk);
+  applyBackground(settings0.background);
   if (me) await refreshAccess();
   applyAuthMode();
   renderAcct();
@@ -97,10 +98,61 @@ async function boot() {
 }
 boot();
 
+let rainbowTimer: number | null = null;
 function applyTheme(accent: string, ink: string) {
   const root = document.documentElement;
+  if (rainbowTimer !== null) { clearInterval(rainbowTimer); rainbowTimer = null; }
+  if (accent === "rainbow") {
+    root.style.setProperty("--accent-ink", "#0a0a0b");
+    let hue = 0;
+    const tick = () => { hue = (hue + 2) % 360; root.style.setProperty("--accent", `hsl(${hue}, 90%, 62%)`); };
+    tick();
+    rainbowTimer = window.setInterval(tick, 60);
+    return;
+  }
   root.style.setProperty("--accent", accent || "#ffffff");
   root.style.setProperty("--accent-ink", ink || "#0a0a0b");
+}
+
+function applyBackground(url: string) {
+  let layer = document.getElementById("custom_bg");
+  if (!url) { if (layer) layer.remove(); return; }
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "custom_bg";
+    document.body.prepend(layer);
+  }
+  (layer as HTMLElement).style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`;
+}
+
+// Lightweight confetti burst, no dependencies.
+function confetti() {
+  const c = document.createElement("canvas");
+  c.className = "confetti_layer";
+  document.body.appendChild(c);
+  const ctx = c.getContext("2d")!;
+  const resize = () => { c.width = innerWidth; c.height = innerHeight; };
+  resize();
+  const colors = ["#ff5c5c", "#5b8cff", "#46dd8b", "#ffd24a", "#ff6bd6", "#4bd6e6", "#ffffff"];
+  const parts = Array.from({ length: 160 }, () => ({
+    x: innerWidth / 2, y: innerHeight / 3,
+    vx: (Math.random() - 0.5) * 16, vy: Math.random() * -14 - 4,
+    s: Math.random() * 6 + 3, c: colors[(Math.random() * colors.length) | 0],
+    rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4,
+  }));
+  let frame = 0;
+  const draw = () => {
+    frame++;
+    ctx.clearRect(0, 0, c.width, c.height);
+    for (const p of parts) {
+      p.vy += 0.5; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 1.6); ctx.restore();
+    }
+    if (frame < 140) requestAnimationFrame(draw);
+    else c.remove();
+  };
+  draw();
 }
 
 const THEMES: { name: string; accent: string; ink: string }[] = [
@@ -114,6 +166,7 @@ const THEMES: { name: string; accent: string; ink: string }[] = [
   { name: "Cyan", accent: "#4bd6e6", ink: "#0a0a0b" },
   { name: "Gold", accent: "#ffd24a", ink: "#0a0a0b" },
   { name: "Lime", accent: "#c6ff5c", ink: "#0a0a0b" },
+  { name: "Rainbow", accent: "rainbow", ink: "#0a0a0b" },
 ];
 
 async function refreshAccess() {
@@ -337,6 +390,7 @@ async function renderHome() {
           <h2>Welcome back, ${escape(me!.username)}</h2>
           <span class="sub">Latest release ${escape(latestRelease)}</span>
         </div>
+        <div class="online_pill" id="online_pill"><span class="live_dot"></span><span id="online_txt">Checking who's online...</span></div>
         <div class="mode_pill ${optimized ? "" : "vanilla"}">${optimized ? "Optimized" : "Vanilla"}</div>
         <div class="stats_row">
           <div class="stat"><b>${stats.launchCount}</b><span>Launches</span></div>
@@ -454,6 +508,11 @@ async function renderHome() {
 
   app.querySelectorAll<HTMLElement>(".folder_btn").forEach((btn) =>
     btn.addEventListener("click", () => window.vantic.openFolder(btn.dataset.folder as FolderKind)));
+
+  window.vantic.online.count().then((n) => {
+    const txt = document.getElementById("online_txt");
+    if (txt) txt.textContent = n > 0 ? `${n.toLocaleString()} playing right now` : "Be the first online today";
+  });
 
   window.vantic.news.list().then((items) => {
     const wrap = document.getElementById("news_wrap");
@@ -749,6 +808,97 @@ async function renderPacks() {
   });
 }
 
+function loadImg(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function openWrapped(pt: { totalSeconds: number; sessions: number; longestSeconds: number; streak: number }) {
+  if (!me) return;
+  confetti();
+  const accent = (getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()) || "#ffffff";
+
+  let rank = 0;
+  try {
+    const players = await window.vantic.leaderboard.list();
+    const myU = me.uuid.replace(/-/g, "").toLowerCase();
+    const idx = players.findIndex((p) => p.minecraft_uuid.toLowerCase() === myU);
+    rank = idx >= 0 ? idx + 1 : 0;
+  } catch { /* offline */ }
+
+  const skinData = await window.vantic.imageDataUrl(`https://crafatar.com/renders/body/${uuidDashes(me.uuid)}?scale=14&overlay=true&default=MHF_Steve`);
+  const skinImg = skinData ? await loadImg(skinData) : null;
+
+  const cv = document.createElement("canvas");
+  cv.width = 1080; cv.height = 1080;
+  const ctx = cv.getContext("2d")!;
+
+  // background
+  const g = ctx.createLinearGradient(0, 0, 1080, 1080);
+  g.addColorStop(0, "#111114"); g.addColorStop(1, "#0a0a0b");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 1080, 1080);
+  ctx.fillStyle = accent; ctx.globalAlpha = 0.10; ctx.beginPath(); ctx.arc(950, 130, 320, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+
+  ctx.fillStyle = accent; ctx.font = "700 34px 'Segoe UI', sans-serif";
+  ctx.fillText("VANTIC WRAPPED", 70, 110);
+  ctx.fillStyle = "#f5f5f7"; ctx.font = "800 76px 'Segoe UI', sans-serif";
+  ctx.fillText(me.username, 70, 200);
+
+  if (skinImg) ctx.drawImage(skinImg, 760, 250, 260, 560);
+
+  const fmtH = (s: number) => {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+  const stats: [string, string][] = [
+    ["Total played", fmtH(pt.totalSeconds)],
+    ["Day streak", `${pt.streak} days`],
+    ["Sessions", `${pt.sessions}`],
+    ["Longest session", fmtH(pt.longestSeconds)],
+    ["Global rank", rank > 0 ? `#${rank}` : "unranked"],
+  ];
+  let y = 320;
+  for (const [label, val] of stats) {
+    ctx.fillStyle = "#8a8f9c"; ctx.font = "600 26px 'Segoe UI', sans-serif";
+    ctx.fillText(label.toUpperCase(), 70, y);
+    ctx.fillStyle = "#ffffff"; ctx.font = "800 60px 'Segoe UI', sans-serif";
+    ctx.fillText(val, 70, y + 62);
+    y += 128;
+  }
+
+  ctx.fillStyle = accent; ctx.font = "700 30px 'Segoe UI', sans-serif";
+  ctx.fillText("vantic.lol", 70, 1010);
+  ctx.fillStyle = "#6c717d"; ctx.font = "500 24px 'Segoe UI', sans-serif";
+  ctx.fillText("free minecraft client", 240, 1010);
+
+  const dataUrl = cv.toDataURL("image/png");
+
+  const box = document.createElement("div");
+  box.className = "lightbox";
+  box.innerHTML = `
+    <div class="lightbox_bar">
+      <span class="lightbox_name">Vantic Wrapped</span>
+      <button class="lightbox_close">${I.close}</button>
+    </div>
+    <div class="wrapped_body">
+      <img src="${dataUrl}" alt="" class="wrapped_img" />
+      <button class="btn lg" id="wrapped_save">Save image to share</button>
+    </div>`;
+  document.body.appendChild(box);
+  box.addEventListener("click", (e) => {
+    if (e.target === box || (e.target as HTMLElement).closest(".lightbox_close")) box.remove();
+  });
+  box.querySelector("#wrapped_save")!.addEventListener("click", async () => {
+    const btn = box.querySelector("#wrapped_save") as HTMLButtonElement;
+    btn.disabled = true; btn.textContent = "Saved to screenshots";
+    await window.vantic.saveWrapped(dataUrl);
+  });
+}
+
 async function renderLeaderboard() {
   const app = document.getElementById("app")!;
   app.innerHTML = `
@@ -811,8 +961,15 @@ async function renderProfile() {
 
   app.innerHTML = `
     <div class="page-head">
-      <div><h1>Profile</h1><div class="sub">Your Vantic playtime, tracked locally. Nothing is uploaded.</div></div>
-    </div>
+      <div><h1>Profile</h1><div class="sub">Your Vantic playtime, tracked locally.</div></div>
+      <button class="btn" id="wrapped_btn">${I.spark}<span>Vantic Wrapped</span></button>
+    </div>`;
+  const headEl = app;
+  // reattach the rest below (kept in a second innerHTML assignment for clarity)
+  app.insertAdjacentHTML("beforeend", `<div id="profile_body"></div>`);
+  document.getElementById("wrapped_btn")!.addEventListener("click", () => openWrapped(pt));
+  const bodyHost = document.getElementById("profile_body")!;
+  bodyHost.innerHTML = `
 
     <div class="profile_top">
       <div class="profile_skin"><img src="${escape(body(me.uuid))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'letter',textContent:'${escape((me.username[0]||'?').toUpperCase())}'}))" /></div>
@@ -1140,10 +1297,17 @@ async function renderThemes() {
     <div class="theme_grid">
       ${THEMES.map((t) => `
         <button class="theme_swatch ${s.accent.toLowerCase() === t.accent.toLowerCase() ? "on" : ""}" data-accent="${t.accent}" data-ink="${t.ink}">
-          <span class="dot" style="background:${t.accent}"></span>
+          <span class="dot ${t.accent === "rainbow" ? "rainbow" : ""}" style="${t.accent === "rainbow" ? "" : `background:${t.accent}`}"></span>
           <span class="tname">${t.name}</span>
         </button>`).join("")}
+    </div>
+
+    <div class="graph_head" style="margin-top:20px"><b>Launcher background</b></div>
+    <div class="bg_row">
+      <button class="btn" id="bg_pick">${I.image}<span>Choose image</span></button>
+      <button class="btn ghost" id="bg_reset">Reset to default</button>
     </div>`;
+
   app.querySelectorAll<HTMLButtonElement>(".theme_swatch").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const accent = btn.dataset.accent!;
@@ -1154,6 +1318,18 @@ async function renderThemes() {
       app.querySelectorAll(".theme_swatch").forEach((b) => b.classList.remove("on"));
       btn.classList.add("on");
     });
+  });
+  document.getElementById("bg_pick")!.addEventListener("click", async () => {
+    const url = await window.vantic.pickBackground();
+    if (!url) return;
+    applyBackground(url);
+    const cur = await window.vantic.settings.get();
+    await window.vantic.settings.set({ ...cur, background: url });
+  });
+  document.getElementById("bg_reset")!.addEventListener("click", async () => {
+    applyBackground("");
+    const cur = await window.vantic.settings.get();
+    await window.vantic.settings.set({ ...cur, background: "" });
   });
 }
 
