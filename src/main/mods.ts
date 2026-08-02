@@ -39,7 +39,6 @@ export const MOD_CATALOG: ModDef[] = [
   { slug: "badoptimizations",     name: "BadOptimizations",     blurb: "Optimizes sound, particles, and rendering paths.",                               category: "fps",      defaultOn: true },
   { slug: "dynamic-fps",          name: "Dynamic FPS",          blurb: "Throttles FPS when the window is not focused so the GPU rests.",                  category: "fps",      defaultOn: true },
   { slug: "krypton",              name: "Krypton",              blurb: "Faster network stack. Less lag from packet handling.",                           category: "fps",      defaultOn: true },
-  { slug: "c2me-fabric",          name: "C2ME",                 blurb: "Multi threaded chunk loading and generation. Far less stutter when moving.",     category: "chunks",   defaultOn: true },
   { slug: "vmp-fabric",           name: "Very Many Players",    blurb: "Tick and chunk throughput optimizations. Helps everywhere.",                     category: "chunks",   defaultOn: true },
   { slug: "noisium",              name: "Noisium",              blurb: "Speeds up world generation.",                                                    category: "chunks",   defaultOn: true },
   { slug: "threadtweak",          name: "ThreadTweak",          blurb: "Tunes chunk generation threads for your CPU.",                                    category: "chunks",   defaultOn: true },
@@ -49,7 +48,6 @@ export const MOD_CATALOG: ModDef[] = [
   { slug: "servercore",           name: "ServerCore",           blurb: "Server side tick optimizations. Helps singleplayer too.",                         category: "fps",      defaultOn: true },
   { slug: "anchor-optimizer",     name: "Anchor Optimizer",     blurb: "Kills the lag from spammed respawn anchors. Critical in crystal PvP.",           category: "fps",      defaultOn: true },
   { slug: "consumable-optimizer", name: "Consumable Optimizer", blurb: "Reduces lag from crystal, splash, and consumable spam.",                          category: "fps",      defaultOn: true },
-  { slug: "rrls",                 name: "RRLS",                 blurb: "Removes the frame drop when resource packs reload.",                              category: "fps",      defaultOn: true },
   { slug: "packetfixer",          name: "Packet Fixer",         blurb: "Stops oversized packets from freezing or lagging you out.",                       category: "fps",      defaultOn: true },
   // Experimental Vulkan renderer. Off by default. Can be faster on some modern
   // GPUs but is unstable and sometimes slower than Sodium. Turn Sodium OFF

@@ -17,7 +17,7 @@ export type Settings = {
   schema: number;
 };
 
-const SCHEMA = 3;
+const SCHEMA = 4;
 
 const CATALOG_SLUGS = new Set(MOD_CATALOG.map((m) => m.slug));
 const FORCED_MODS = MOD_CATALOG.filter((m) => m.forced).map((m) => m.slug);
