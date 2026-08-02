@@ -125,6 +125,45 @@ async function copyBundled(assetsRoot: string): Promise<string[]> {
   return copied;
 }
 
+export type SearchHit = { slug: string; title: string; description: string; icon: string | null; downloads: number; author: string };
+
+// Search all of Modrinth for Fabric mods compatible with the given MC version.
+// Empty query returns the most downloaded ones.
+export async function searchModrinth(query: string, mcVersion: string): Promise<SearchHit[]> {
+  const facets = `[["project_type:mod"],["categories:fabric"],["versions:${mcVersion}"]]`;
+  const index = query.trim() ? "relevance" : "downloads";
+  const url = `https://api.modrinth.com/v2/search?limit=30&index=${index}&query=${encodeURIComponent(query)}&facets=${encodeURIComponent(facets)}`;
+  try {
+    const data = await getJson<{ hits: any[] }>(url);
+    return (data.hits || []).map((h) => ({
+      slug: h.slug,
+      title: h.title,
+      description: h.description,
+      icon: h.icon_url || null,
+      downloads: h.downloads || 0,
+      author: h.author || "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Install one mod by slug into the mods folder for the given MC version.
+export async function installMod(slug: string, mcVersion: string): Promise<{ ok: boolean; filename?: string; error?: string }> {
+  const modsDir = path.join(mcDir(), "mods");
+  await fsp.mkdir(modsDir, { recursive: true });
+  const ver = await resolveVersion(slug, mcVersion);
+  if (!ver) return { ok: false, error: `No Fabric build for ${mcVersion}.` };
+  const primary = ver.files.find((f) => f.primary) || ver.files[0];
+  if (!primary) return { ok: false, error: "No downloadable file." };
+  try {
+    await download(primary.url, path.join(modsDir, primary.filename));
+    return { ok: true, filename: primary.filename };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "Download failed." };
+  }
+}
+
 export async function syncMods(
   mcVersion: string,
   enabledSlugs: string[],

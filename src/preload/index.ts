@@ -76,8 +76,13 @@ const api = {
   },
   online: { count: (): Promise<number> => ipcRenderer.invoke("online:count") },
   imageDataUrl: (url: string): Promise<string | null> => ipcRenderer.invoke("image:dataurl", url),
-  pickBackground: (): Promise<string | null> => ipcRenderer.invoke("bg:pick"),
   saveWrapped: (dataUrl: string): Promise<string | null> => ipcRenderer.invoke("wrapped:save", dataUrl),
+  browse: {
+    search: (query: string): Promise<Array<{ slug: string; title: string; description: string; icon: string | null; downloads: number; author: string }>> =>
+      ipcRenderer.invoke("mods:search", query),
+    install: (slug: string): Promise<{ ok: boolean; filename?: string; error?: string }> =>
+      ipcRenderer.invoke("mods:install", slug),
+  },
   gallery: {
     list: (): Promise<Array<{ name: string; path: string; size: number; mtime: number; url: string }>> =>
       ipcRenderer.invoke("gallery:list"),

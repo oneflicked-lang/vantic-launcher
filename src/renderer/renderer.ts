@@ -1,5 +1,5 @@
 type Auth = { username: string; uuid: string } | null;
-type Route = "home" | "profile" | "leaderboard" | "news" | "mods" | "packs" | "worlds" | "servers" | "gallery" | "themes" | "discord" | "console" | "settings" | "help";
+type Route = "home" | "profile" | "leaderboard" | "news" | "mods" | "browse" | "packs" | "worlds" | "servers" | "gallery" | "themes" | "discord" | "console" | "settings" | "help";
 type Shot = { name: string; path: string; size: number; mtime: number; url: string };
 type World = { name: string; path: string; iconUrl: string | null; mtime: number; size: number };
 type Server = { id: string; name: string; address: string; port: number };
@@ -90,7 +90,6 @@ async function boot() {
   stats = s;
   const settings0 = await window.vantic.settings.get();
   applyTheme(settings0.accent, settings0.accentInk);
-  applyBackground(settings0.background);
   if (me) await refreshAccess();
   applyAuthMode();
   renderAcct();
@@ -112,17 +111,6 @@ function applyTheme(accent: string, ink: string) {
   }
   root.style.setProperty("--accent", accent || "#ffffff");
   root.style.setProperty("--accent-ink", ink || "#0a0a0b");
-}
-
-function applyBackground(url: string) {
-  let layer = document.getElementById("custom_bg");
-  if (!url) { if (layer) layer.remove(); return; }
-  if (!layer) {
-    layer = document.createElement("div");
-    layer.id = "custom_bg";
-    document.body.prepend(layer);
-  }
-  (layer as HTMLElement).style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`;
 }
 
 // Lightweight confetti burst, no dependencies.
@@ -288,6 +276,7 @@ function renderSidebar() {
     ]},
     { title: "Library", tabs: [
       { id: "mods", label: "Mods", icon: I.mods },
+      { id: "browse", label: "Browse Mods", icon: I.search },
       { id: "packs", label: "Resource Packs", icon: I.packs },
       { id: "worlds", label: "Worlds", icon: I.world },
       { id: "gallery", label: "Gallery", icon: I.gallery },
@@ -327,6 +316,7 @@ function navigate(r: Route) {
   else if (r === "leaderboard") renderLeaderboard();
   else if (r === "news") renderNewsPage();
   else if (r === "mods") renderMods();
+  else if (r === "browse") renderBrowse();
   else if (r === "packs") renderPacks();
   else if (r === "worlds") renderWorlds();
   else if (r === "servers") renderServers();
@@ -707,6 +697,82 @@ async function renderMods() {
     } catch (e: any) {
       msg.innerHTML = `<div class="err">${escape(String(e?.message || e))}</div>`;
     }
+  });
+}
+
+let browseQuery = "";
+async function renderBrowse() {
+  const app = document.getElementById("app")!;
+  const settings = await window.vantic.settings.get();
+  app.innerHTML = `
+    <div class="page-head">
+      <div><h1>Browse Mods</h1><div class="sub">Search all of Modrinth and install any Fabric mod for ${escape(settings.versionId || "1.21.11")}. Installed mods go straight to your mods folder.</div></div>
+    </div>
+    <div class="tool_row">
+      <div class="search ${browseQuery ? "has_text" : ""}" id="browse_search">
+        ${I.search}
+        <input type="text" placeholder="Search mods on Modrinth..." id="browse_q" value="${escape(browseQuery)}" />
+        <button class="clear_x" id="browse_clear">clear</button>
+      </div>
+      <button class="btn ghost small" data-folder="mods">${I.pkg}<span>Open folder</span></button>
+    </div>
+    <div id="browse_msg"></div>
+    <div class="list_grid" id="browse_list"><div style="color: var(--muted); padding: 30px; text-align:center;">Loading popular mods...</div></div>`;
+
+  app.querySelector("[data-folder=mods]")?.addEventListener("click", () => window.vantic.openFolder("mods"));
+
+  const listEl = document.getElementById("browse_list")!;
+  const qInput = document.getElementById("browse_q") as HTMLInputElement;
+  const searchEl = document.getElementById("browse_search")!;
+
+  const fmtDl = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : `${n}`);
+
+  const runSearch = async () => {
+    listEl.innerHTML = `<div style="color: var(--muted); padding: 30px; text-align:center;">Searching...</div>`;
+    const hits = await window.vantic.browse.search(browseQuery);
+    if (hits.length === 0) {
+      listEl.innerHTML = `<div style="color: var(--muted); padding: 40px; text-align:center;">No mods found.</div>`;
+      return;
+    }
+    listEl.innerHTML = hits
+      .map((h) => `
+        <div class="browse_row">
+          <div class="browse_icon">${h.icon ? `<img src="${escape(h.icon)}" alt="" onerror="this.style.display='none'" />` : I.pkg}</div>
+          <div class="info">
+            <div class="head"><b>${escape(h.title)}</b><span class="badge">${fmtDl(h.downloads)} downloads</span></div>
+            <span class="blurb">${escape(h.description)}</span>
+          </div>
+          <button class="btn small" data-install="${escape(h.slug)}">${I.download}<span>Install</span></button>
+        </div>`)
+      .join("");
+    listEl.querySelectorAll<HTMLButtonElement>("[data-install]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const slug = btn.dataset.install!;
+        const msg = document.getElementById("browse_msg")!;
+        msg.innerHTML = "";
+        btn.disabled = true; btn.innerHTML = "<span>Installing...</span>";
+        const r = await window.vantic.browse.install(slug);
+        if (r.ok) {
+          btn.innerHTML = "<span>Installed</span>";
+          msg.innerHTML = `<div class="ok">Installed ${escape(r.filename || slug)} into your mods folder.</div>`;
+        } else {
+          btn.disabled = false; btn.innerHTML = `${I.download}<span>Install</span>`;
+          msg.innerHTML = `<div class="err">${escape(r.error || "Install failed.")}</div>`;
+        }
+      });
+    });
+  };
+  runSearch();
+
+  let deb: number | undefined;
+  qInput.addEventListener("input", () => {
+    browseQuery = qInput.value;
+    searchEl.classList.toggle("has_text", !!browseQuery);
+    clearTimeout(deb);
+    deb = window.setTimeout(runSearch, 400);
+  });
+  document.getElementById("browse_clear")!.addEventListener("click", () => {
+    browseQuery = ""; qInput.value = ""; searchEl.classList.remove("has_text"); runSearch(); qInput.focus();
   });
 }
 
@@ -1300,12 +1366,6 @@ async function renderThemes() {
           <span class="dot ${t.accent === "rainbow" ? "rainbow" : ""}" style="${t.accent === "rainbow" ? "" : `background:${t.accent}`}"></span>
           <span class="tname">${t.name}</span>
         </button>`).join("")}
-    </div>
-
-    <div class="graph_head" style="margin-top:20px"><b>Launcher background</b></div>
-    <div class="bg_row">
-      <button class="btn" id="bg_pick">${I.image}<span>Choose image</span></button>
-      <button class="btn ghost" id="bg_reset">Reset to default</button>
     </div>`;
 
   app.querySelectorAll<HTMLButtonElement>(".theme_swatch").forEach((btn) => {
@@ -1318,18 +1378,6 @@ async function renderThemes() {
       app.querySelectorAll(".theme_swatch").forEach((b) => b.classList.remove("on"));
       btn.classList.add("on");
     });
-  });
-  document.getElementById("bg_pick")!.addEventListener("click", async () => {
-    const url = await window.vantic.pickBackground();
-    if (!url) return;
-    applyBackground(url);
-    const cur = await window.vantic.settings.get();
-    await window.vantic.settings.set({ ...cur, background: url });
-  });
-  document.getElementById("bg_reset")!.addEventListener("click", async () => {
-    applyBackground("");
-    const cur = await window.vantic.settings.get();
-    await window.vantic.settings.set({ ...cur, background: "" });
   });
 }
 

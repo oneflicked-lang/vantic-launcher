@@ -7,7 +7,7 @@ import { getManifest } from "./versions";
 import { loadSettings, saveSettings, Settings } from "./settings";
 import { initRpc, setEnabled as setRpcEnabled, setIdle, setPlaying } from "./rpc";
 import { mcDir } from "./paths";
-import { MOD_CATALOG, syncMods } from "./mods";
+import { MOD_CATALOG, syncMods, searchModrinth, installMod } from "./mods";
 import { PACK_CATALOG, installPack, installedPacks } from "./packs";
 import { ensureFabric } from "./fabric";
 import { loadStats, bumpLaunch } from "./stats";
@@ -23,7 +23,6 @@ import { checkAccess } from "./access";
 import { recordSession, summary as playtimeSummary } from "./playtime";
 import { fetchNews, fetchLeaderboard, uploadPlaytime, postHeartbeat, fetchOnline, imageDataUrl } from "./community";
 import { applyFastOptions } from "./gameOptions";
-import { dialog } from "electron";
 import { loadServers, saveServers, parseAddress, Server } from "./servers";
 import { pingServer } from "./serverPing";
 import crypto from "crypto";
@@ -122,6 +121,14 @@ ipcMain.handle("log:clear", async () => { logBuffer.length = 0; win?.webContents
 
 // mods + packs
 ipcMain.handle("mods:catalog", async () => MOD_CATALOG);
+ipcMain.handle("mods:search", async (_e, query: string) => {
+  const s = await loadSettings();
+  return searchModrinth(query, s.versionId || "1.21.11");
+});
+ipcMain.handle("mods:install", async (_e, slug: string) => {
+  const s = await loadSettings();
+  return installMod(slug, s.versionId || "1.21.11");
+});
 
 // early access
 ipcMain.handle("access:check", async () => {
@@ -168,25 +175,6 @@ ipcMain.handle("news:list", async () => fetchNews());
 ipcMain.handle("leaderboard:list", async () => fetchLeaderboard());
 ipcMain.handle("online:count", async () => fetchOnline());
 ipcMain.handle("image:dataurl", async (_e, url: string) => imageDataUrl(url));
-
-// Pick a custom launcher background, copy it into appdata so it persists, and
-// return a file URL the renderer can use.
-ipcMain.handle("bg:pick", async () => {
-  const res = await dialog.showOpenDialog(win!, {
-    title: "Choose a launcher background",
-    properties: ["openFile"],
-    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
-  });
-  if (res.canceled || !res.filePaths[0]) return null;
-  const src = res.filePaths[0];
-  const dest = path.join(mcDir(), "..", `background${path.extname(src)}`);
-  try {
-    fs.copyFileSync(src, dest);
-    return pathToFileURL(dest).href;
-  } catch {
-    return pathToFileURL(src).href;
-  }
-});
 
 // Save a Vantic Wrapped card (data URL from a canvas) to disk and reveal it.
 ipcMain.handle("wrapped:save", async (_e, dataUrl: string) => {

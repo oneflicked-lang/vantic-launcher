@@ -14,7 +14,6 @@ export type Settings = {
   leaderboard: boolean;
   accent: string;
   accentInk: string;
-  background: string;
   schema: number;
 };
 
@@ -35,7 +34,6 @@ const DEFAULTS: Settings = {
   leaderboard: true,
   accent: "#ffffff",
   accentInk: "#0a0a0b",
-  background: "",
   schema: SCHEMA,
 };
 
