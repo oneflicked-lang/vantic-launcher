@@ -442,7 +442,34 @@ async function renderHome() {
   ];
   const dd = buildDropdown({
     label: "Minecraft version", value: currentVer, options: versionOptions,
-    onChange: async (v) => { const cur = await window.vantic.settings.get(); await window.vantic.settings.set({ ...cur, versionId: v }); },
+    onChange: async (v) => {
+      const cur = await window.vantic.settings.get();
+      await window.vantic.settings.set({ ...cur, versionId: v });
+      // Re-sync the mod set to builds for the newly selected version so the
+      // mods folder always matches what will launch. No-op in vanilla / running.
+      if (cur.launchMode === "optimized" && !running) {
+        const prog = document.getElementById("prog") as HTMLDivElement | null;
+        const label = document.getElementById("prog_label");
+        const pct = document.getElementById("prog_pct");
+        const fill = document.getElementById("prog_fill") as HTMLDivElement | null;
+        if (prog && label && fill) {
+          prog.classList.add("on");
+          label.textContent = `Updating mods for ${v}`;
+          if (pct) pct.textContent = "";
+          fill.style.width = "0%";
+        }
+        try {
+          await window.vantic.mods.sync();
+          if (prog && label && fill) {
+            label.textContent = `Mods ready for ${v}`;
+            fill.style.width = "100%";
+            setTimeout(() => { if (route === "home") prog.classList.remove("on"); }, 1200);
+          }
+        } catch {
+          if (prog) prog.classList.remove("on");
+        }
+      }
+    },
   });
   const playBtn = document.createElement("button");
   playBtn.className = "btn lg play_btn" + (running ? " stop" : "");
@@ -667,7 +694,7 @@ async function renderMods() {
         if (set.has(slug)) set.delete(slug); else set.add(slug);
         await window.vantic.settings.set({ ...cur, enabledMods: Array.from(set) });
         sw.classList.toggle("on", set.has(slug));
-        enabled.clear(); Array.from(set).forEach((s) => enabled.add(s));
+        enabled.clear(); Array.from(set).forEach((s) => enabled.add(s as string));
       });
     });
   };
@@ -701,12 +728,20 @@ async function renderMods() {
 }
 
 let browseQuery = "";
+let browseVersion = "";
 async function renderBrowse() {
   const app = document.getElementById("app")!;
-  const settings = await window.vantic.settings.get();
+  const [settings, { latestRelease, versions }] = await Promise.all([
+    window.vantic.settings.get(),
+    window.vantic.versions.list(),
+  ]);
+  // Default the Browse version to whatever the launcher is set to, but let the
+  // user override it so they can grab a mod for a different Minecraft version.
+  if (!browseVersion) browseVersion = settings.versionId || "1.21.11";
+
   app.innerHTML = `
     <div class="page-head">
-      <div><h1>Browse Mods</h1><div class="sub">Search all of Modrinth and install any Fabric mod for ${escape(settings.versionId || "1.21.11")}. Installed mods go straight to your mods folder.</div></div>
+      <div><h1>Browse Mods</h1><div class="sub">Search all of Modrinth and install any Fabric mod. Pick the Minecraft version to install for, then hit Install.</div></div>
     </div>
     <div class="tool_row">
       <div class="search ${browseQuery ? "has_text" : ""}" id="browse_search">
@@ -714,6 +749,7 @@ async function renderBrowse() {
         <input type="text" placeholder="Search mods on Modrinth..." id="browse_q" value="${escape(browseQuery)}" />
         <button class="clear_x" id="browse_clear">clear</button>
       </div>
+      <div id="browse_ver_slot"></div>
       <button class="btn ghost small" data-folder="mods">${I.pkg}<span>Open folder</span></button>
     </div>
     <div id="browse_msg"></div>
@@ -728,10 +764,10 @@ async function renderBrowse() {
   const fmtDl = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : `${n}`);
 
   const runSearch = async () => {
-    listEl.innerHTML = `<div style="color: var(--muted); padding: 30px; text-align:center;">Searching...</div>`;
-    const hits = await window.vantic.browse.search(browseQuery);
+    listEl.innerHTML = `<div style="color: var(--muted); padding: 30px; text-align:center;">Searching ${escape(browseVersion)}...</div>`;
+    const hits = await window.vantic.browse.search(browseQuery, browseVersion);
     if (hits.length === 0) {
-      listEl.innerHTML = `<div style="color: var(--muted); padding: 40px; text-align:center;">No mods found.</div>`;
+      listEl.innerHTML = `<div style="color: var(--muted); padding: 40px; text-align:center;">No Fabric mods found for ${escape(browseVersion)}.</div>`;
       return;
     }
     listEl.innerHTML = hits
@@ -751,10 +787,10 @@ async function renderBrowse() {
         const msg = document.getElementById("browse_msg")!;
         msg.innerHTML = "";
         btn.disabled = true; btn.innerHTML = "<span>Installing...</span>";
-        const r = await window.vantic.browse.install(slug);
+        const r = await window.vantic.browse.install(slug, browseVersion);
         if (r.ok) {
           btn.innerHTML = "<span>Installed</span>";
-          msg.innerHTML = `<div class="ok">Installed ${escape(r.filename || slug)} into your mods folder.</div>`;
+          msg.innerHTML = `<div class="ok">Installed ${escape(r.filename || slug)} (${escape(browseVersion)}) into your mods folder.</div>`;
         } else {
           btn.disabled = false; btn.innerHTML = `${I.download}<span>Install</span>`;
           msg.innerHTML = `<div class="err">${escape(r.error || "Install failed.")}</div>`;
@@ -762,6 +798,18 @@ async function renderBrowse() {
       });
     });
   };
+
+  // Version picker: controls both which version we search and which build installs.
+  const verOptions = [
+    ...(versions.some((v) => v.id === browseVersion) ? [] : [{ value: browseVersion, label: browseVersion, tag: "custom" }]),
+    ...versions.map((v) => ({ value: v.id, label: v.id, tag: v.id === latestRelease ? "latest" : "" })),
+  ];
+  const verDd = buildDropdown({
+    label: "For version", value: browseVersion, options: verOptions,
+    onChange: (v) => { browseVersion = v; runSearch(); },
+  });
+  document.getElementById("browse_ver_slot")!.appendChild(verDd);
+
   runSearch();
 
   let deb: number | undefined;

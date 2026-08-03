@@ -46,7 +46,6 @@ export const MOD_CATALOG: ModDef[] = [
   { slug: "silicon",              name: "Silicon",              blurb: "Optimizes math and block position handling under the hood.",                     category: "fps",      defaultOn: true },
   { slug: "fpsdisplay",           name: "FPS Counter",          blurb: "Clean FPS counter overlay in the corner. See your framerate at a glance.",       category: "fps",      defaultOn: true },
   { slug: "servercore",           name: "ServerCore",           blurb: "Server side tick optimizations. Helps singleplayer too.",                         category: "fps",      defaultOn: true },
-  { slug: "anchor-optimizer",     name: "Anchor Optimizer",     blurb: "Kills the lag from spammed respawn anchors. Critical in crystal PvP.",           category: "fps",      defaultOn: true },
   { slug: "consumable-optimizer", name: "Consumable Optimizer", blurb: "Reduces lag from crystal, splash, and consumable spam.",                          category: "fps",      defaultOn: true },
   { slug: "packetfixer",          name: "Packet Fixer",         blurb: "Stops oversized packets from freezing or lagging you out.",                       category: "fps",      defaultOn: true },
   // Experimental Vulkan renderer. Off by default. Can be faster on some modern

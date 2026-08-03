@@ -121,13 +121,29 @@ ipcMain.handle("log:clear", async () => { logBuffer.length = 0; win?.webContents
 
 // mods + packs
 ipcMain.handle("mods:catalog", async () => MOD_CATALOG);
-ipcMain.handle("mods:search", async (_e, query: string) => {
+ipcMain.handle("mods:search", async (_e, query: string, version?: string) => {
   const s = await loadSettings();
-  return searchModrinth(query, s.versionId || "1.21.11");
+  return searchModrinth(query, version || s.versionId || "1.21.11");
 });
-ipcMain.handle("mods:install", async (_e, slug: string) => {
+ipcMain.handle("mods:install", async (_e, slug: string, version?: string) => {
   const s = await loadSettings();
-  return installMod(slug, s.versionId || "1.21.11");
+  return installMod(slug, version || s.versionId || "1.21.11");
+});
+
+// Re-sync the enabled mods to match the currently selected Minecraft version.
+// Called when the user changes their version so the mods folder always holds
+// builds for the version they will actually launch. No-op in vanilla mode and
+// while the game is running.
+ipcMain.handle("mods:sync", async (evt) => {
+  if (running) return { skipped: true as const, reason: "running" };
+  const s = await loadSettings();
+  if (s.launchMode !== "optimized") return { skipped: true as const, reason: "vanilla" };
+  const chosen = s.versionId || "1.21.11";
+  const assetsRoot = path.join(__dirname, "..", "..", "assets");
+  const r = await syncMods(chosen, s.enabledMods, assetsRoot, (msg, done, total) =>
+    evt.sender.send("launch:progress", { label: msg, done, total })
+  );
+  return { skipped: false as const, installed: r.installed, upToDate: r.skipped, missing: r.missing };
 });
 
 // early access

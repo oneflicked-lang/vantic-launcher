@@ -1,6 +1,6 @@
 {
   "name": "vantic-launcher",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Vantic Minecraft launcher",
   "private": true,
   "main": "dist/main/index.js",

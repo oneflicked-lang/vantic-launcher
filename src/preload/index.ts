@@ -37,7 +37,11 @@ const api = {
     get: () => ipcRenderer.invoke("settings:get"),
     set: (s: unknown) => ipcRenderer.invoke("settings:set", s),
   },
-  mods: { catalog: (): Promise<Mod[]> => ipcRenderer.invoke("mods:catalog") },
+  mods: {
+    catalog: (): Promise<Mod[]> => ipcRenderer.invoke("mods:catalog"),
+    sync: (): Promise<{ skipped: boolean; reason?: string; installed?: string[]; upToDate?: string[]; missing?: string[] }> =>
+      ipcRenderer.invoke("mods:sync"),
+  },
   access: {
     check: (): Promise<{ allowed: boolean; reason?: string }> => ipcRenderer.invoke("access:check"),
   },
@@ -78,10 +82,10 @@ const api = {
   imageDataUrl: (url: string): Promise<string | null> => ipcRenderer.invoke("image:dataurl", url),
   saveWrapped: (dataUrl: string): Promise<string | null> => ipcRenderer.invoke("wrapped:save", dataUrl),
   browse: {
-    search: (query: string): Promise<Array<{ slug: string; title: string; description: string; icon: string | null; downloads: number; author: string }>> =>
-      ipcRenderer.invoke("mods:search", query),
-    install: (slug: string): Promise<{ ok: boolean; filename?: string; error?: string }> =>
-      ipcRenderer.invoke("mods:install", slug),
+    search: (query: string, version?: string): Promise<Array<{ slug: string; title: string; description: string; icon: string | null; downloads: number; author: string }>> =>
+      ipcRenderer.invoke("mods:search", query, version),
+    install: (slug: string, version?: string): Promise<{ ok: boolean; filename?: string; error?: string }> =>
+      ipcRenderer.invoke("mods:install", slug, version),
   },
   gallery: {
     list: (): Promise<Array<{ name: string; path: string; size: number; mtime: number; url: string }>> =>
