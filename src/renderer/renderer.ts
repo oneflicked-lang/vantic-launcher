@@ -67,8 +67,9 @@ function uuidDashes(id: string): string {
   if (id.length !== 32) return id;
   return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
 }
-const head = (u: string, s: number) => `https://crafatar.com/avatars/${uuidDashes(u)}?size=${s}&overlay=true&default=MHF_Steve`;
-const body = (u: string) => `https://crafatar.com/renders/body/${uuidDashes(u)}?scale=8&overlay=true&default=MHF_Steve`;
+// mc-heads.net is more reliable than crafatar (which has frequent outages).
+const head = (u: string, s: number) => `https://mc-heads.net/avatar/${uuidDashes(u)}/${s}`;
+const body = (u: string) => `https://mc-heads.net/body/${uuidDashes(u)}`;
 
 async function boot() {
   wireTitlebar();
@@ -944,7 +945,7 @@ async function openWrapped(pt: { totalSeconds: number; sessions: number; longest
     rank = idx >= 0 ? idx + 1 : 0;
   } catch { /* offline */ }
 
-  const skinData = await window.vantic.imageDataUrl(`https://crafatar.com/renders/body/${uuidDashes(me.uuid)}?scale=14&overlay=true&default=MHF_Steve`);
+  const skinData = await window.vantic.imageDataUrl(`https://mc-heads.net/body/${uuidDashes(me.uuid)}/256`);
   const skinImg = skinData ? await loadImg(skinData) : null;
 
   const cv = document.createElement("canvas");
@@ -1040,7 +1041,7 @@ async function renderLeaderboard() {
       return `
         <div class="lb_row ${isMe ? "me" : ""}">
           <div class="lb_rank ${rankClass}">${i + 1}</div>
-          <img class="lb_head" src="https://crafatar.com/avatars/${escape(p.minecraft_uuid)}?size=32&overlay=true&default=MHF_Steve" alt="" onerror="this.style.visibility='hidden'" />
+          <img class="lb_head" src="https://mc-heads.net/avatar/${escape(p.minecraft_uuid)}/32" alt="" onerror="this.style.visibility='hidden'" />
           <div class="lb_name">${escape(p.minecraft_name)}${isMe ? ' <span class="you">you</span>' : ""}</div>
           <div class="lb_time">${fmt(p.total_seconds)}</div>
         </div>`;
