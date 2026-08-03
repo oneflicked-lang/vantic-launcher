@@ -14,10 +14,11 @@ export type Settings = {
   leaderboard: boolean;
   accent: string;
   accentInk: string;
+  capeId: string | null;
   schema: number;
 };
 
-const SCHEMA = 5;
+const SCHEMA = 6;
 
 const CATALOG_SLUGS = new Set(MOD_CATALOG.map((m) => m.slug));
 const FORCED_MODS = MOD_CATALOG.filter((m) => m.forced).map((m) => m.slug);
@@ -34,6 +35,7 @@ const DEFAULTS: Settings = {
   leaderboard: true,
   accent: "#ffffff",
   accentInk: "#0a0a0b",
+  capeId: null,
   schema: SCHEMA,
 };
 

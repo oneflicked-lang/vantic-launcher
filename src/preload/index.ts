@@ -79,6 +79,9 @@ const api = {
       ipcRenderer.invoke("leaderboard:list"),
   },
   online: { count: (): Promise<number> => ipcRenderer.invoke("online:count") },
+  capes: {
+    set: (capeId: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke("cape:set", capeId),
+  },
   imageDataUrl: (url: string): Promise<string | null> => ipcRenderer.invoke("image:dataurl", url),
   saveWrapped: (dataUrl: string): Promise<string | null> => ipcRenderer.invoke("wrapped:save", dataUrl),
   browse: {

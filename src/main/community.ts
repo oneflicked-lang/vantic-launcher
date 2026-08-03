@@ -37,6 +37,21 @@ export async function uploadPlaytime(uuid: string, name: string, totalSeconds: n
   }
 }
 
+// Save the player's chosen Vantic cape. capeId "none" clears it. The in-game
+// cape mod reads it back from /api/cape/<uuid>.
+export async function setCape(uuid: string, capeId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/api/cape/${encodeURIComponent(uuid)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "VanticLauncher" },
+      body: JSON.stringify({ capeId }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function postHeartbeat(uuid: string): Promise<void> {
   try {
     await fetch(`${BASE}/api/heartbeat`, {

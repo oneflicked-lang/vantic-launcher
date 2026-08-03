@@ -8,7 +8,7 @@ export type ModDef = {
   slug: string;
   name: string;
   blurb: string;
-  category: "renderer" | "fps" | "memory" | "chunks" | "lib";
+  category: "renderer" | "fps" | "memory" | "chunks" | "lib" | "cosmetic";
   defaultOn: boolean;
   forced?: boolean;
 };
@@ -48,6 +48,9 @@ export const MOD_CATALOG: ModDef[] = [
   { slug: "servercore",           name: "ServerCore",           blurb: "Server side tick optimizations. Helps singleplayer too.",                         category: "fps",      defaultOn: true },
   { slug: "consumable-optimizer", name: "Consumable Optimizer", blurb: "Reduces lag from crystal, splash, and consumable spam.",                          category: "fps",      defaultOn: true },
   { slug: "packetfixer",          name: "Packet Fixer",         blurb: "Stops oversized packets from freezing or lagging you out.",                       category: "fps",      defaultOn: true },
+  // Renders Vantic capes in-game. Reads each player's chosen cape from the
+  // Vantic API (see ensureCapeProviderConfig). Lightweight, client-side.
+  { slug: "cape-provider",        name: "Vantic Capes",         blurb: "Shows Vantic capes in-game. Pick yours on the Capes page.",                       category: "cosmetic", defaultOn: true },
   // Experimental Vulkan renderer. Off by default. Can be faster on some modern
   // GPUs but is unstable and sometimes slower than Sodium. Turn Sodium OFF
   // before enabling this, the two renderers conflict.
@@ -120,6 +123,30 @@ async function copyBundled(assetsRoot: string): Promise<string[]> {
     /* no bundled-mods folder, fine */
   }
   return copied;
+}
+
+// Ensure the Cape Provider mod is configured to fetch Vantic capes. $idNoHyphen
+// is substituted per-rendered-player, so every player's chosen Vantic cape
+// shows. Merges into any existing config so we never clobber the user's other
+// providers; missing top-level fields are filled in by the mod's own defaults.
+export async function ensureCapeProviderConfig(apiBase: string): Promise<void> {
+  const dir = path.join(mcDir(), "config", "cape-provider");
+  const file = path.join(dir, "config.json");
+  await fsp.mkdir(dir, { recursive: true });
+
+  let cfg: any = {};
+  try { cfg = JSON.parse(await fsp.readFile(file, "utf8")); } catch { cfg = {}; }
+  if (!Array.isArray(cfg.remoteCustomProviders)) cfg.remoteCustomProviders = [];
+
+  const provider = {
+    id: "vantic",
+    name: "Vantic",
+    uriTemplate: `${apiBase.replace(/\/+$/, "")}/api/cape/$idNoHyphen`,
+  };
+  cfg.remoteCustomProviders = cfg.remoteCustomProviders.filter((p: any) => p && p.id !== "vantic");
+  cfg.remoteCustomProviders.unshift(provider);
+
+  await fsp.writeFile(file, JSON.stringify(cfg, null, 2), "utf8");
 }
 
 export type SearchHit = { slug: string; title: string; description: string; icon: string | null; downloads: number; author: string };

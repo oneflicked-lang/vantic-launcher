@@ -476,3 +476,23 @@ body.locked main { display: grid; place-items: center; padding: 0; }
   .hero { grid-template-columns: 1fr; }
   .stats_row { grid-template-columns: 1fr 1fr; }
 }
+
+/* Capes */
+.cape_card {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 18px 16px 16px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--line);
+  cursor: pointer; transition: border-color .16s, transform .16s, background .16s;
+}
+.cape_card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.cape_card.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.cape_prev {
+  background: #0b0b0d; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+.cape_prev.none {
+  width: 90px; height: 144px; display: grid; place-items: center;
+  color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; background: transparent;
+}
+.cape_info { text-align: center; }
+.cape_info b { display: block; font-size: 14px; }
+.cape_info span { color: var(--muted); font-size: 12px; }

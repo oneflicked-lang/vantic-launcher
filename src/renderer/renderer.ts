@@ -1,5 +1,5 @@
 type Auth = { username: string; uuid: string } | null;
-type Route = "home" | "profile" | "leaderboard" | "news" | "mods" | "browse" | "packs" | "worlds" | "servers" | "gallery" | "themes" | "discord" | "console" | "settings" | "help";
+type Route = "home" | "profile" | "leaderboard" | "news" | "mods" | "browse" | "packs" | "worlds" | "capes" | "gallery" | "themes" | "discord" | "console" | "settings" | "help" | "servers";
 type Shot = { name: string; path: string; size: number; mtime: number; url: string };
 type World = { name: string; path: string; iconUrl: string | null; mtime: number; size: number };
 type Server = { id: string; name: string; address: string; port: number };
@@ -191,7 +191,7 @@ function wireGlobal() {
   });
 
   // Global keyboard shortcuts. Ctrl+digit switches tabs, Ctrl+P plays.
-  const routes: Route[] = ["home", "profile", "leaderboard", "mods", "packs", "worlds", "servers", "gallery", "themes"];
+  const routes: Route[] = ["home", "profile", "leaderboard", "mods", "packs", "worlds", "capes", "servers", "gallery", "themes"];
   document.addEventListener("keydown", (e) => {
     if (!me) return;
     const tag = (e.target as HTMLElement)?.tagName;
@@ -280,6 +280,7 @@ function renderSidebar() {
       { id: "browse", label: "Browse Mods", icon: I.search },
       { id: "packs", label: "Resource Packs", icon: I.packs },
       { id: "worlds", label: "Worlds", icon: I.world },
+      { id: "capes", label: "Capes", icon: I.shirt },
       { id: "gallery", label: "Gallery", icon: I.gallery },
     ]},
     { title: "Community", tabs: [
@@ -320,6 +321,7 @@ function navigate(r: Route) {
   else if (r === "browse") renderBrowse();
   else if (r === "packs") renderPacks();
   else if (r === "worlds") renderWorlds();
+  else if (r === "capes") renderCapes();
   else if (r === "servers") renderServers();
   else if (r === "gallery") renderGallery();
   else if (r === "themes") renderThemes();
@@ -823,6 +825,67 @@ async function renderBrowse() {
   document.getElementById("browse_clear")!.addEventListener("click", () => {
     browseQuery = ""; qInput.value = ""; searchEl.classList.remove("has_text"); runSearch(); qInput.focus();
   });
+}
+
+const VANTIC_CAPES: { id: string; name: string; blurb: string }[] = [
+  { id: "vantic", name: "Vantic", blurb: "The signature Vantic cape. Clean charcoal with a bright accent stripe." },
+];
+const CAPE_BASE = "https://vantic.lol/capes";
+
+// Crop the back panel (10x16 at offset 1,1) out of a 64x32 cape texture and
+// scale it up crisply, so each card shows a cape shape rather than a flat sheet.
+function capePreviewStyle(id: string): string {
+  const w = 90, h = 144; // 10:16
+  const sw = (64 / 10) * w, sh = (32 / 16) * h;
+  const ox = (1 / 10) * w, oy = (1 / 16) * h;
+  return `width:${w}px;height:${h}px;background-image:url('${CAPE_BASE}/${id}.png');background-repeat:no-repeat;image-rendering:pixelated;background-size:${sw}px ${sh}px;background-position:-${ox}px -${oy}px;border-radius:6px;`;
+}
+
+async function renderCapes() {
+  const app = document.getElementById("app")!;
+  const settings = await window.vantic.settings.get();
+  let selected: string | null = settings.capeId || null;
+
+  app.innerHTML = `
+    <div class="page-head">
+      <div><h1>Capes</h1><div class="sub">Pick a Vantic cape. It shows in-game in Optimized mode, and on your profile everywhere.</div></div>
+    </div>
+    <div id="cape_msg"></div>
+    <div class="list_grid" id="capes_list"></div>`;
+
+  const listEl = document.getElementById("capes_list")!;
+  const msg = document.getElementById("cape_msg")!;
+
+  const paint = () => {
+    const none = `
+      <div class="cape_card ${selected ? "" : "on"}" data-cape="none">
+        <div class="cape_prev none">${I.close}</div>
+        <div class="cape_info"><b>No cape</b><span>Show no cape.</span></div>
+      </div>`;
+    const cards = VANTIC_CAPES.map((c) => `
+      <div class="cape_card ${selected === c.id ? "on" : ""}" data-cape="${escape(c.id)}">
+        <div class="cape_prev" style="${capePreviewStyle(c.id)}"></div>
+        <div class="cape_info"><b>${escape(c.name)}</b><span>${escape(c.blurb)}</span></div>
+      </div>`).join("");
+    listEl.innerHTML = none + cards;
+    listEl.querySelectorAll<HTMLElement>(".cape_card").forEach((card) => {
+      card.addEventListener("click", async () => {
+        const id = card.dataset.cape!;
+        const next = id === "none" ? null : id;
+        if (next === selected) return;
+        selected = next;
+        paint();
+        msg.innerHTML = "";
+        const r = await window.vantic.capes.set(id);
+        if (!r.ok) {
+          msg.innerHTML = `<div class="err">${escape(r.error || "Couldn't save your cape. Check your connection.")}</div>`;
+        } else {
+          msg.innerHTML = `<div class="ok">${next ? "Cape equipped." : "Cape removed."} It applies next time you launch.</div>`;
+        }
+      });
+    });
+  };
+  paint();
 }
 
 async function renderPacks() {

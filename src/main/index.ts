@@ -7,7 +7,7 @@ import { getManifest } from "./versions";
 import { loadSettings, saveSettings, Settings } from "./settings";
 import { initRpc, setEnabled as setRpcEnabled, setIdle, setPlaying } from "./rpc";
 import { mcDir } from "./paths";
-import { MOD_CATALOG, syncMods, searchModrinth, installMod } from "./mods";
+import { MOD_CATALOG, syncMods, searchModrinth, installMod, ensureCapeProviderConfig } from "./mods";
 import { PACK_CATALOG, installPack, installedPacks } from "./packs";
 import { ensureFabric } from "./fabric";
 import { loadStats, bumpLaunch } from "./stats";
@@ -21,7 +21,7 @@ import { cleanupLegacy } from "./resourcePack";
 import { scanHardware, AIKAR_FLAGS, Recommendation } from "./hardware";
 import { checkAccess } from "./access";
 import { recordSession, summary as playtimeSummary } from "./playtime";
-import { fetchNews, fetchLeaderboard, uploadPlaytime, postHeartbeat, fetchOnline, imageDataUrl } from "./community";
+import { fetchNews, fetchLeaderboard, uploadPlaytime, postHeartbeat, fetchOnline, imageDataUrl, setCape } from "./community";
 import { applyFastOptions } from "./gameOptions";
 import { loadServers, saveServers, parseAddress, Server } from "./servers";
 import { pingServer } from "./serverPing";
@@ -189,6 +189,14 @@ ipcMain.handle("stats:get", async () => loadStats());
 ipcMain.handle("playtime:get", async () => playtimeSummary());
 ipcMain.handle("news:list", async () => fetchNews());
 ipcMain.handle("leaderboard:list", async () => fetchLeaderboard());
+ipcMain.handle("cape:set", async (_e, capeId: string) => {
+  const auth = currentMclc();
+  if (!auth) return { ok: false as const, error: "Not logged in." };
+  const s = await loadSettings();
+  await saveSettings({ ...s, capeId: capeId && capeId !== "none" ? capeId : null });
+  const ok = await setCape(auth.uuid, capeId || "none");
+  return { ok };
+});
 ipcMain.handle("online:count", async () => fetchOnline());
 ipcMain.handle("image:dataurl", async (_e, url: string) => imageDataUrl(url));
 
@@ -287,6 +295,14 @@ ipcMain.handle("launch:play", async (evt) => {
       if (r.bundled.length) pushLog(`> Bundled: ${r.bundled.join(", ")}`);
       pushLog(`> Mods synced: ${r.installed.length} installed, ${r.skipped.length} up to date` + (r.missing.length ? `, ${r.missing.length} unavailable for ${chosen}` : ""));
       if (r.missing.length) pushLog(`> Missing: ${r.missing.join(", ")}. They may not support ${chosen} yet.`);
+      if (settings.enabledMods.includes("cape-provider")) {
+        try {
+          await ensureCapeProviderConfig(process.env.VANTIC_API_BASE || "https://vantic.lol");
+          pushLog("> Vantic capes configured.");
+        } catch (e: any) {
+          pushLog(`> Cape config skipped: ${e?.message || e}`);
+        }
+      }
       const applied = await applyFastOptions();
       if (applied) pushLog("> Applied FPS-optimized video settings.");
     }
