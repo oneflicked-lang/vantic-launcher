@@ -297,7 +297,9 @@ ipcMain.handle("launch:play", async (evt) => {
       if (r.missing.length) pushLog(`> Missing: ${r.missing.join(", ")}. They may not support ${chosen} yet.`);
       if (settings.enabledMods.includes("cape-provider")) {
         try {
-          await ensureCapeProviderConfig(process.env.VANTIC_API_BASE || "https://vantic.lol");
+          // Use the canonical www host: the apex vantic.lol 308-redirects to
+          // www, and Cape Provider does not follow redirects when fetching.
+          await ensureCapeProviderConfig(process.env.VANTIC_API_BASE || "https://www.vantic.lol");
           pushLog("> Vantic capes configured.");
         } catch (e: any) {
           pushLog(`> Cape config skipped: ${e?.message || e}`);

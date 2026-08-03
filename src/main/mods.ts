@@ -146,6 +146,11 @@ export async function ensureCapeProviderConfig(apiBase: string): Promise<void> {
   cfg.remoteCustomProviders = cfg.remoteCustomProviders.filter((p: any) => p && p.id !== "vantic");
   cfg.remoteCustomProviders.unshift(provider);
 
+  // A provider only renders if it is ALSO in activeProviderIds. Make Vantic the
+  // active provider so every player's chosen Vantic cape shows (and we don't
+  // pull capes from the mod's default third-party service).
+  cfg.activeProviderIds = ["vantic"];
+
   await fsp.writeFile(file, JSON.stringify(cfg, null, 2), "utf8");
 }
 
