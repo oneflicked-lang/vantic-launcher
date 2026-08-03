@@ -141,7 +141,10 @@ export async function ensureCapeProviderConfig(apiBase: string): Promise<void> {
   const provider = {
     id: "vantic",
     name: "Vantic",
-    uriTemplate: `${apiBase.replace(/\/+$/, "")}/api/cape/$idNoHyphen`,
+    // Use $id (hyphenated UUID) not $idNoHyphen: the mod replaces "$id" before
+    // "$idNoHyphen", and since "$idNoHyphen" contains "$id" it gets mangled into
+    // "<uuid>NoHyphen". Our API strips dashes server-side, so $id resolves fine.
+    uriTemplate: `${apiBase.replace(/\/+$/, "")}/api/cape/$id`,
   };
   cfg.remoteCustomProviders = cfg.remoteCustomProviders.filter((p: any) => p && p.id !== "vantic");
   cfg.remoteCustomProviders.unshift(provider);
